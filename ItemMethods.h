@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+* Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
 * This program is free software licensed under GPL version 3
 * Please see the included DOCS/LICENSE.md for more information
 */
@@ -23,7 +23,6 @@ namespace LuaItem
         return 1;
     }
 
-#if (!defined(TBC) && !defined(CLASSIC))
     /**
      * Returns 'true' if the [Item] is account bound, 'false' otherwise
      *
@@ -34,7 +33,6 @@ namespace LuaItem
         Eluna::Push(L, item->IsBoundAccountWide());
         return 1;
     }
-#endif
 
     /**
      * Returns 'true' if the [Item] is bound to a [Player] by an enchant, 'false' otehrwise
@@ -83,7 +81,6 @@ namespace LuaItem
         return 1;
     }
 
-#ifndef CLASSIC
     /**
      * Returns 'true' if the [Item] is a currency token, 'false' otherwise
      *
@@ -94,7 +91,6 @@ namespace LuaItem
         Eluna::Push(L, item->IsCurrencyToken());
         return 1;
     }
-#endif
 
     /**
      * Returns 'true' if the [Item] is a not an empty bag, 'false' otherwise
@@ -125,12 +121,9 @@ namespace LuaItem
      */
     int CanBeTraded(lua_State* L, Item* item)
     {
-#if (defined(TBC) || defined(CLASSIC))
-        Eluna::Push(L, item->CanBeTraded());
-#else
         bool mail = Eluna::CHECKVAL<bool>(L, 2, false);
+
         Eluna::Push(L, item->CanBeTraded(mail));
-#endif
         return 1;
     }
 
@@ -176,11 +169,8 @@ namespace LuaItem
     int HasQuest(lua_State* L, Item* item)
     {
         uint32 quest = Eluna::CHECKVAL<uint32>(L, 2);
-#if defined TRINITY || AZEROTHCORE
+
         Eluna::Push(L, item->hasQuest(quest));
-#else
-        Eluna::Push(L, item->HasQuest(quest));
-#endif
         return 1;
     }
 
@@ -194,30 +184,6 @@ namespace LuaItem
         Eluna::Push(L, item->IsPotion());
         return 1;
     }
-
-#if defined CLASSIC || defined(TBC) || defined(WOTLK)
-    /**
-     * Returns 'true' if the [Item] is a weapon vellum, 'false' otherwise
-     *
-     * @return bool isWeaponVellum
-     */
-    int IsWeaponVellum(lua_State* L, Item* item)
-    {
-        Eluna::Push(L, item->IsWeaponVellum());
-        return 1;
-    }
-
-    /**
-     * Returns 'true' if the [Item] is an armor vellum, 'false' otherwise
-     *
-     * @return bool isArmorVellum
-     */
-    int IsArmorVellum(lua_State* L, Item* item)
-    {
-        Eluna::Push(L, item->IsArmorVellum());
-        return 1;
-    }
-#endif
 
     /**
      * Returns 'true' if the [Item] is a conjured consumable, 'false' otherwise
@@ -264,70 +230,13 @@ namespace LuaItem
             return luaL_argerror(L, 2, "valid LocaleConstant expected");
 
         const ItemTemplate* temp = item->GetTemplate();
-        std::string name = temp->Name1;
-        if (ItemLocale const* il = eObjectMgr->GetItemLocale(temp->ItemId))
-            ObjectMgr::GetLocaleString(il->Name, static_cast<LocaleConstant>(locale), name);
+        std::string name = temp->GetName(static_cast<LocaleConstant>(locale));
 
-#ifndef CLASSIC
-        if (int32 itemRandPropId = item->GetItemRandomPropertyId())
-        {
-#if defined(CATA) || defined (MISTS)
-            char* suffix = NULL;
-#else
-#ifdef TRINITY
-            std::array<char const*, 16> const* suffix = NULL;
-#else
-            char* const* suffix = NULL;
-#endif
-#endif
-            if (itemRandPropId < 0)
-            {
-                const ItemRandomSuffixEntry* itemRandEntry = sItemRandomSuffixStore.LookupEntry(-item->GetItemRandomPropertyId());
-                if (itemRandEntry)
-#ifdef TRINITY
-                    suffix = &itemRandEntry->Name;
-#else
-                    suffix = itemRandEntry->nameSuffix;
-#endif
-            }
-            else
-            {
-                const ItemRandomPropertiesEntry* itemRandEntry = sItemRandomPropertiesStore.LookupEntry(item->GetItemRandomPropertyId());
-                if (itemRandEntry)
-#ifdef TRINITY
-                    suffix = &itemRandEntry->Name;
-#else
-                    suffix = itemRandEntry->nameSuffix;
-#endif
-            }
-            if (suffix)
-            {
-                name += ' ';
-#if defined TRINITY
-                name += (*suffix)[(name != temp->Name1) ? locale : uint8(DEFAULT_LOCALE)];
-#else
-                name += suffix[(name != temp->Name1) ? locale : uint8(DEFAULT_LOCALE)];
-#endif
-            }
-        }
-#endif
-
+        // \124cffa335ee\124Hitem:174164::::::::120::::2:4824:1517:\124h[Breastplate of Twilight Decimation]\124h\124r
         std::ostringstream oss;
-        oss << "|c" << std::hex << ItemQualityColors[temp->Quality] << std::dec <<
-            "|Hitem:" << temp->ItemId << ":" <<
-            item->GetEnchantmentId(PERM_ENCHANTMENT_SLOT) << ":" <<
-#ifndef CLASSIC
-            item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT) << ":" <<
-            item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_2) << ":" <<
-            item->GetEnchantmentId(SOCK_ENCHANTMENT_SLOT_3) << ":" <<
-            item->GetEnchantmentId(BONUS_ENCHANTMENT_SLOT) << ":" <<
-#endif
-            item->GetItemRandomPropertyId() << ":" << item->GetItemSuffixFactor() << ":" <<
-#ifdef TRINITY
-            (uint32)item->GetOwner()->GetLevel() << "|h[" << name << "]|h|r";
-#else
-            (uint32)item->GetOwner()->getLevel() << "|h[" << name << "]|h|r";
-#endif
+        oss << "|c" << std::hex << ItemQualityColors[temp->GetQuality()] << std::dec <<
+            "|Hitem:" << temp->GetId() << "::::::::" << (uint32)item->GetOwner()->getLevel()
+            << ":::::::" << "|h[" << name << "]|h|r";
 
         Eluna::Push(L, oss.str());
         return 1;
@@ -335,11 +244,7 @@ namespace LuaItem
 
     int GetOwnerGUID(lua_State* L, Item* item)
     {
-#if defined TRINITY || AZEROTHCORE
         Eluna::Push(L, item->GetOwnerGUID());
-#else
-        Eluna::Push(L, item->GetOwnerGuid());
-#endif
         return 1;
     }
 
@@ -416,45 +321,13 @@ namespace LuaItem
     }
 
     /**
-     * Returns the spell ID tied to the [Item] by spell index
-     *
-     * @param uint32 spellIndex : the spell index specified
-     * @return uint32 spellId : the id of the spell
-     */
-    int GetSpellId(lua_State* L, Item* item)
-    {
-        uint32 index = Eluna::CHECKVAL<uint32>(L, 2);
-        if (index >= MAX_ITEM_PROTO_SPELLS)
-            return luaL_argerror(L, 2, "valid SpellIndex expected");
-
-        Eluna::Push(L, item->GetTemplate()->Spells[index].SpellId);
-        return 1;
-    }
-
-    /**
-     * Returns the spell trigger tied to the [Item] by spell index
-     *
-     * @param uint32 spellIndex : the spell index specified
-     * @return uint32 spellTrigger : the spell trigger of the specified index
-     */
-    int GetSpellTrigger(lua_State* L, Item* item)
-    {
-        uint32 index = Eluna::CHECKVAL<uint32>(L, 2);
-        if (index >= MAX_ITEM_PROTO_SPELLS)
-            return luaL_argerror(L, 2, "valid SpellIndex expected");
-
-        Eluna::Push(L, item->GetTemplate()->Spells[index].SpellTrigger);
-        return 1;
-    }
-
-    /**
      * Returns class of the [Item]
      *
      * @return uint32 class
      */
     int GetClass(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->Class);
+        Eluna::Push(L, item->GetTemplate()->GetClass());
         return 1;
     }
 
@@ -465,7 +338,7 @@ namespace LuaItem
      */
     int GetSubClass(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->SubClass);
+        Eluna::Push(L, item->GetTemplate()->GetSubClass());
         return 1;
     }
 
@@ -476,7 +349,7 @@ namespace LuaItem
      */
     int GetName(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->Name1);
+        Eluna::Push(L, item->GetTemplate()->GetName((LocaleConstant)0));
         return 1;
     }
 
@@ -487,7 +360,7 @@ namespace LuaItem
      */
     int GetDisplayId(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->DisplayInfoID);
+        Eluna::Push(L, item->GetTemplate()->ExtendedData->Display.Str);
         return 1;
     }
 
@@ -498,7 +371,7 @@ namespace LuaItem
      */
     int GetQuality(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->Quality);
+        Eluna::Push(L, item->GetTemplate()->GetQuality());
         return 1;
     }
 
@@ -509,7 +382,7 @@ namespace LuaItem
      */
     int GetBuyCount(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->BuyCount);
+        Eluna::Push(L, item->GetTemplate()->GetBuyCount());
         return 1;
     }
 
@@ -520,7 +393,7 @@ namespace LuaItem
      */
     int GetBuyPrice(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->BuyPrice);
+        Eluna::Push(L, item->GetTemplate()->GetBuyPrice());
         return 1;
     }
 
@@ -531,7 +404,7 @@ namespace LuaItem
      */
     int GetSellPrice(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->SellPrice);
+        Eluna::Push(L, item->GetTemplate()->GetSellPrice());
         return 1;
     }
 
@@ -542,7 +415,7 @@ namespace LuaItem
      */
     int GetInventoryType(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->InventoryType);
+        Eluna::Push(L, item->GetTemplate()->GetInventoryType());
         return 1;
     }
 
@@ -553,7 +426,7 @@ namespace LuaItem
      */
     int GetAllowableClass(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->AllowableClass);
+        Eluna::Push(L, item->GetTemplate()->GetAllowableClass());
         return 1;
     }
 
@@ -564,7 +437,7 @@ namespace LuaItem
      */
     int GetAllowableRace(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->AllowableRace);
+        Eluna::Push(L, item->GetTemplate()->GetAllowableRace());
         return 1;
     }
 
@@ -575,7 +448,7 @@ namespace LuaItem
      */
     int GetItemLevel(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->ItemLevel);
+        Eluna::Push(L, item->GetTemplate()->GetBaseItemLevel());
         return 1;
     }
 
@@ -586,36 +459,9 @@ namespace LuaItem
      */
     int GetRequiredLevel(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->RequiredLevel);
+        Eluna::Push(L, item->GetTemplate()->GetBaseRequiredLevel());
         return 1;
     }
-
-#ifdef WOTLK
-    int GetStatsCount(lua_State* L, Item* item)
-    {
-        Eluna::Push(L, item->GetTemplate()->StatsCount);
-        return 1;
-    }
-#endif
-
-    /**
-     * Returns the random property ID of this [Item]
-     *
-     * @return uint32 randomPropertyId
-     */
-    int GetRandomProperty(lua_State* L, Item* item)
-    {
-        Eluna::Push(L, item->GetTemplate()->RandomProperty);
-        return 1;
-    }
-
-#ifndef CLASSIC
-    int GetRandomSuffix(lua_State* L, Item* item)
-    {
-        Eluna::Push(L, item->GetTemplate()->RandomSuffix);
-        return 1;
-    }
-#endif
 
     /**
      * Returns the item set ID of this [Item]
@@ -624,7 +470,7 @@ namespace LuaItem
      */
     int GetItemSet(lua_State* L, Item* item)
     {
-        Eluna::Push(L, item->GetTemplate()->ItemSet);
+        Eluna::Push(L, item->GetTemplate()->GetItemSet());
         return 1;
     }
 
@@ -650,11 +496,8 @@ namespace LuaItem
     int SetOwner(lua_State* L, Item* item)
     {
         Player* player = Eluna::CHECKOBJ<Player>(L, 2);
-#if defined TRINITY || AZEROTHCORE
+
         item->SetOwnerGUID(player->GET_GUID());
-#else
-        item->SetOwnerGuid(player->GET_GUID());
-#endif
         return 0;
     }
 
@@ -756,15 +599,8 @@ namespace LuaItem
      */
     int SaveToDB(lua_State* /*L*/, Item* item)
     {
-#if defined TRINITY
         CharacterDatabaseTransaction trans = CharacterDatabaseTransaction(nullptr);
         item->SaveToDB(trans);
-#elif defined AZEROTHCORE
-        SQLTransaction trans = SQLTransaction(NULL);
-        item->SaveToDB(trans);
-#else
-        item->SaveToDB();
-#endif
         return 0;
     }
 };

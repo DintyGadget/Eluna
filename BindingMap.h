@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+* Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
 * This program is free software licensed under GPL version 3
 * Please see the included DOCS/LICENSE.md for more information
 */
@@ -367,7 +367,7 @@ namespace std
 
         hash_helper::result_type operator()(argument_type const& k) const
         {
-            return hash_helper::hash(k.event_id, k.instance_id, k.guid.GetRawValue());
+            return hash_helper::hash(k.event_id, k.instance_id, k.guid);
         }
     };
 }

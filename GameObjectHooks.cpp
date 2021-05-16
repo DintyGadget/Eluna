@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+ * Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
  * This program is free software licensed under GPL version 3
  * Please see the included DOCS/LICENSE.md for more information
  */
@@ -42,7 +42,7 @@ void Eluna::OnDummyEffect(WorldObject* pCaster, uint32 spellId, SpellEffIndex ef
 
 void Eluna::UpdateAI(GameObject* pGameObject, uint32 diff)
 {
-    pGameObject->elunaEvents->Update(diff);
+    pGameObject->ElunaEvents->Update(diff);
     START_HOOK(GAMEOBJECT_EVENT_ON_AIUPDATE, pGameObject->GetEntry());
     Push(pGameObject);
     Push(diff);
@@ -76,8 +76,6 @@ void Eluna::GetDialogStatus(const Player* pPlayer, const GameObject* pGameObject
     CallAllFunctions(GameObjectEventBindings, key);
 }
 
-#ifndef CLASSIC
-#ifndef TBC
 void Eluna::OnDestroyed(GameObject* pGameObject, WorldObject* attacker)
 {
     START_HOOK(GAMEOBJECT_EVENT_ON_DESTROYED, pGameObject->GetEntry());
@@ -93,14 +91,13 @@ void Eluna::OnDamaged(GameObject* pGameObject, WorldObject* attacker)
     Push(attacker);
     CallAllFunctions(GameObjectEventBindings, key);
 }
-#endif
-#endif
 
-void Eluna::OnLootStateChanged(GameObject* pGameObject, uint32 state)
+void Eluna::OnLootStateChanged(GameObject* pGameObject, uint32 state, Unit* unit)
 {
     START_HOOK(GAMEOBJECT_EVENT_ON_LOOT_STATE_CHANGE, pGameObject->GetEntry());
     Push(pGameObject);
     Push(state);
+    Push(unit);
     CallAllFunctions(GameObjectEventBindings, key);
 }
 

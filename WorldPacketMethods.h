@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+* Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
 * This program is free software licensed under GPL version 3
 * Please see the included DOCS/LICENSE.md for more information
 */
@@ -50,9 +50,11 @@ namespace LuaPacket
     int SetOpcode(lua_State* L, WorldPacket* packet)
     {
         uint32 opcode = Eluna::CHECKVAL<uint32>(L, 2);
-        if (opcode >= NUM_MSG_TYPES)
+
+        if (opcode >= OpcodeMisc::MAX_OPCODE)
             return luaL_argerror(L, 2, "valid opcode expected");
-        packet->SetOpcode((OpcodesList)opcode);
+
+        packet->SetOpcode((OpcodeClientList)opcode);
         return 0;
     }
 
@@ -163,7 +165,7 @@ namespace LuaPacket
     /**
      * Reads and returns an unsigned 64-bit integer value from the [WorldPacket].
      *
-     * @return ObjectGuid value : value returned as string
+     * @return uint64 value : value returned as string
      */
     int ReadGUID(lua_State* L, WorldPacket* packet)
     {
@@ -189,7 +191,7 @@ namespace LuaPacket
     /**
      * Writes an unsigned 64-bit integer value to the [WorldPacket].
      *
-     * @param ObjectGuid value : the value to be written to the [WorldPacket]
+     * @param uint64 value : the value to be written to the [WorldPacket]
      */
     int WriteGUID(lua_State* L, WorldPacket* packet)
     {

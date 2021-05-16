@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+ * Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
  * This program is free software licensed under GPL version 3
  * Please see the included DOCS/LICENSE.md for more information
  */
@@ -65,7 +65,7 @@ void Eluna::OnLootItem(Player* pPlayer, Item* pItem, uint32 count, ObjectGuid gu
     Push(pPlayer);
     Push(pItem);
     Push(count);
-    Push(guid);
+    Push(&guid);
     CallAllFunctions(PlayerEventBindings, key);
 }
 
@@ -200,7 +200,7 @@ void Eluna::OnTalentsReset(Player* pPlayer, bool noCost)
     CallAllFunctions(PlayerEventBindings, key);
 }
 
-void Eluna::OnMoneyChanged(Player* pPlayer, int32& amount)
+void Eluna::OnMoneyChanged(Player* pPlayer, int64& amount)
 {
     START_HOOK(PLAYER_EVENT_ON_MONEY_CHANGE);
     Push(pPlayer);
@@ -214,7 +214,7 @@ void Eluna::OnMoneyChanged(Player* pPlayer, int32& amount)
 
         if (lua_isnumber(L, r))
         {
-            amount = CHECKVAL<int32>(L, r);
+            amount = CHECKVAL<int64>(L, r);
             // Update the stack for subsequent calls.
             ReplaceArgument(amount, amountIndex);
         }
@@ -317,7 +317,7 @@ void Eluna::OnTextEmote(Player* pPlayer, uint32 textEmote, uint32 emoteNum, Obje
     Push(pPlayer);
     Push(textEmote);
     Push(emoteNum);
-    Push(guid);
+    Push(&guid);
     CallAllFunctions(PlayerEventBindings, key);
 }
 

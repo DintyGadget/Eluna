@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+* Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
 * This program is free software licensed under GPL version 3
 * Please see the included DOCS/LICENSE.md for more information
 */
@@ -37,11 +37,7 @@ namespace LuaCreature
     {
         uint32 quest_id = Eluna::CHECKVAL<uint32>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->hasInvolvedQuest(quest_id));
-#else
-        Eluna::Push(L, creature->HasInvolvedQuest(quest_id));
-#endif
         return 1;
     }
 
@@ -56,11 +52,7 @@ namespace LuaCreature
     {
         bool mustBeDead = Eluna::CHECKVAL<bool>(L, 2, false);
 
-#ifdef MANGOS
-        Eluna::Push(L, creature->IsTargetableForAttack(mustBeDead));
-#else
         Eluna::Push(L, creature->isTargetableForAttack(mustBeDead));
-#endif
         return 1;
     }
 
@@ -105,11 +97,7 @@ namespace LuaCreature
     {
         Player* player = Eluna::CHECKOBJ<Player>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->isTappedBy(player));
-#else
-        Eluna::Push(L, creature->IsTappedBy(player));
-#endif
         return 1;
     }
 
@@ -121,11 +109,7 @@ namespace LuaCreature
      */
     int HasLootRecipient(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->hasLootRecipient());
-#else
-        Eluna::Push(L, creature->HasLootRecipient());
-#endif
         return 1;
     }
 
@@ -137,12 +121,7 @@ namespace LuaCreature
      */
     int CanAggro(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, !creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC));
-#else
-        // Eluna::Push(L, creature->CanInitiateAttack());
-        Eluna::Push(L, !creature->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE));
-#endif
+        Eluna::Push(L, !creature->HasUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC));
         return 1;
     }
 
@@ -190,11 +169,7 @@ namespace LuaCreature
      */
     int IsElite(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->isElite());
-#else
-        Eluna::Push(L, creature->IsElite());
-#endif
         return 1;
     }
 
@@ -235,20 +210,6 @@ namespace LuaCreature
     }
 
     /**
-     * Returns `true` if the [Creature]'s flags_extra includes Dungeon Boss (0x1000000),
-     *   and returns `false` otherwise.
-     *
-     * @return bool isDungeonBoss
-     */
-#if defined(TRINITY) || defined(AZEROTHCORE)
-    int IsDungeonBoss(lua_State* L, Creature* creature)
-    {
-        Eluna::Push(L, creature->IsDungeonBoss());
-        return 1;
-    }
-#endif
-
-    /**
      * Returns `true` if the [Creature]'s rank is Boss,
      *   and returns `false` otherwise.
      *
@@ -256,11 +217,7 @@ namespace LuaCreature
      */
     int IsWorldBoss(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->isWorldBoss());
-#else
-        Eluna::Push(L, creature->IsWorldBoss());
-#endif
         return 1;
     }
 
@@ -275,19 +232,10 @@ namespace LuaCreature
     {
         uint32 spell = Eluna::CHECKVAL<uint32>(L, 2);
 
-#if defined(TRINITY)
-        if (const SpellInfo* info = sSpellMgr->GetSpellInfo(spell))
+        if (const SpellInfo* info = sSpellMgr->GetSpellInfo(spell, DIFFICULTY_NONE))
             Eluna::Push(L, info->GetCategory() && creature->GetSpellHistory()->HasCooldown(spell));
         else
             Eluna::Push(L, false);
-#elif defined(AZEROTHCORE)
-        if (const SpellInfo* info = sSpellMgr->GetSpellInfo(spell))
-            Eluna::Push(L, info->GetCategory() && creature->HasSpellCooldown(spell));
-        else
-            Eluna::Push(L, false);
-#else
-        Eluna::Push(L, creature->HasCategoryCooldown(spell));
-#endif
         return 1;
     }
 
@@ -317,11 +265,7 @@ namespace LuaCreature
     {
         uint32 questId = Eluna::CHECKVAL<uint32>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->hasQuest(questId));
-#else
-        Eluna::Push(L, creature->HasQuest(questId));
-#endif
         return 1;
     }
 
@@ -336,11 +280,7 @@ namespace LuaCreature
     {
         uint32 spellId = Eluna::CHECKVAL<uint32>(L, 2);
 
-#if defined(TRINITY)
         Eluna::Push(L, creature->GetSpellHistory()->HasCooldown(spellId));
-#else
-        Eluna::Push(L, creature->HasSpellCooldown(spellId));
-#endif
         return 1;
     }
 
@@ -356,7 +296,6 @@ namespace LuaCreature
         return 1;
     }
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
     /**
      * Returns `true` if the [Creature] is an invisible trigger,
      *   and returns `false` otherwise.
@@ -391,12 +330,9 @@ namespace LuaCreature
     int CanStartAttack(lua_State* L, Creature* creature) // TODO: Implement core side
     {
         Unit* target = Eluna::CHECKOBJ<Unit>(L, 2);
-#ifndef AZEROTHCORE
         bool force = Eluna::CHECKVAL<bool>(L, 3, true);
+
         Eluna::Push(L, creature->CanStartAttack(target, force));
-#else
-        Eluna::Push(L, creature->CanStartAttack(target));
-#endif
         return 1;
     }
 
@@ -413,7 +349,6 @@ namespace LuaCreature
         Eluna::Push(L, creature->HasLootMode(lootMode));
         return 1;
     }
-#endif
 
     /**
      * Returns the time it takes for this [Creature] to respawn once killed.
@@ -437,15 +372,10 @@ namespace LuaCreature
      */
     int GetWanderRadius(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, creature->GetWanderDistance());
-#else
         Eluna::Push(L, creature->GetRespawnRadius());
-#endif
         return 1;
     }
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
     /**
      * Returns the current waypoint path ID of the [Creature].
      *
@@ -456,7 +386,6 @@ namespace LuaCreature
         Eluna::Push(L, creature->GetWaypointPath());
         return 1;
     }
-#endif
 
     /**
      * Returns the current waypoint ID of the [Creature].
@@ -465,13 +394,7 @@ namespace LuaCreature
      */
     int GetCurrentWaypointId(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY)
         Eluna::Push(L, creature->GetCurrentWaypointInfo().first);
-#elif defined(AZEROTHCORE)
-        Eluna::Push(L, creature->GetCurrentWaypointID());
-#else
-        Eluna::Push(L, creature->GetMotionMaster()->getLastReachedWaypoint());
-#endif
         return 1;
     }
 
@@ -496,17 +419,10 @@ namespace LuaCreature
     {
         Unit* target = Eluna::CHECKOBJ<Unit>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->GetAggroRange(target));
-#else
-        float AttackDist = creature->GetAttackDistance(target);
-        float ThreatRadius = sWorld.getConfig(CONFIG_FLOAT_THREAT_RADIUS);
-        Eluna::Push(L, ThreatRadius > AttackDist ? ThreatRadius : AttackDist);
-#endif
         return 1;
     }
 
-#ifndef AZEROTHCORE
     /**
      * Returns the effective aggro range of the [Creature] for `target`.
      *
@@ -523,7 +439,6 @@ namespace LuaCreature
         Eluna::Push(L, creature->GetAttackDistance(target));
         return 1;
     }
-#endif
 
     /**
      * Returns the [Group] that can loot this [Creature].
@@ -532,11 +447,7 @@ namespace LuaCreature
      */
     int GetLootRecipientGroup(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->GetLootRecipientGroup());
-#else
-        Eluna::Push(L, creature->GetGroupLootRecipient());
-#endif
         return 1;
     }
 
@@ -605,19 +516,10 @@ namespace LuaCreature
     {
         uint32 spell = Eluna::CHECKVAL<uint32>(L, 2);
 
-#if defined(TRINITY)
-        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell))
+        if (SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spell, DIFFICULTY_NONE))
             Eluna::Push(L, creature->GetSpellHistory()->GetRemainingCooldown(spellInfo));
         else
             Eluna::Push(L, 0);
-#elif defined(AZEROTHCORE)
-        if (sSpellMgr->GetSpellInfo(spell))
-            Eluna::Push(L, creature->GetSpellCooldown(spell));
-        else
-            Eluna::Push(L, 0);
-#else
-        Eluna::Push(L, creature->GetCreatureSpellCooldownDelay(spell));
-#endif
         return 1;
     }
 
@@ -644,11 +546,7 @@ namespace LuaCreature
     int GetHomePosition(lua_State* L, Creature* creature)
     {
         float x, y, z, o;
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->GetHomePosition(x, y, z, o);
-#else
-        creature->GetRespawnCoord(x, y, z, &o);
-#endif
 
         Eluna::Push(L, x);
         Eluna::Push(L, y);
@@ -673,12 +571,7 @@ namespace LuaCreature
         float z = Eluna::CHECKVAL<float>(L, 4);
         float o = Eluna::CHECKVAL<float>(L, 5);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->SetHomePosition(x, y, z, o);
-#else
-        creature->SetRespawnCoord(x, y, z, o);
-#endif
-
         return 0;
     }
 
@@ -725,33 +618,17 @@ namespace LuaCreature
         float dist = Eluna::CHECKVAL<float>(L, 5, 0.0f);
         int32 aura = Eluna::CHECKVAL<int32>(L, 6, 0);
 
-#if defined(CMANGOS)
-        ThreatList const& threatlist = creature->getThreatManager().getThreatList();
-#elif defined(MANGOS)
-        ThreatList const& threatlist = creature->GetThreatManager().getThreatList();
-#elif defined(TRINITY)
-        auto const& threatlist = creature->GetThreatManager().GetSortedThreatList();
-#elif defined(AZEROTHCORE)
-        auto const& threatlist = creature->getThreatManager().getThreatList();
-#endif
-#ifndef TRINITY
+        auto const& threatlist = creature->GetThreatManager().getThreatList();
+
         if (threatlist.empty())
             return 1;
         if (position >= threatlist.size())
             return 1;
-#endif
+
         std::list<Unit*> targetList;
-#if defined(TRINITY)
-        for (ThreatReference const* itr : threatlist)
-#else
         for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
-#endif
-            {
-#if defined(TRINITY)
-            Unit* target = itr->GetVictim();
-#else
+        {
             Unit* target = (*itr)->getTarget();
-#endif
             if (!target)
                 continue;
             if (playerOnly && target->GetTypeId() != TYPEID_PLAYER)
@@ -820,23 +697,13 @@ namespace LuaCreature
      */
     int GetAITargets(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY)
-        auto const& threatlist = creature->GetThreatManager().GetThreatenedByMeList();
-#elif defined(AZEROTHCORE)
-auto const& threatlist = creature->getThreatManager().getThreatList();
-#else
-        ThreatList const& threatlist = creature->GetThreatManager().getThreatList();
-#endif
+        auto const& threatlist = creature->GetThreatManager().getThreatList();
         lua_createtable(L, threatlist.size(), 0);
         int tbl = lua_gettop(L);
         uint32 i = 0;
         for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
         {
-#if defined(TRINITY)
-            Unit* target = itr->second->GetOwner();
-#else
             Unit* target = (*itr)->getTarget();
-#endif
             if (!target)
                 continue;
             Eluna::Push(L, target);
@@ -854,13 +721,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int GetAITargetsCount(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY)
-        Eluna::Push(L, creature->GetThreatManager().GetThreatenedByMeList().size());
-#elif defined(AZEROTHCORE)
-        Eluna::Push(L, creature->getThreatManager().getThreatList().size());
-#else
         Eluna::Push(L, creature->GetThreatManager().getThreatList().size());
-#endif
         return 1;
     }
 
@@ -874,48 +735,15 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int GetNPCFlags(lua_State* L, Creature* creature)
     {
-        Eluna::Push(L, creature->GetUInt32Value(UNIT_NPC_FLAGS));
+        Eluna::Push(L, creature->m_unitData->NpcFlags[0]);
         return 1;
     }
 
-    /**
-     * Returns the [Creature]'s Extra flags.
-     *
-     * These are used to control whether the NPC is a civilian, uses pathfinding,
-     *   if it's a guard, etc.
-     *
-     * @return [ExtraFlags] extraFlags
-     */
-    int GetExtraFlags(lua_State* L, Creature* creature)
-    {
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        Eluna::Push(L, creature->GetCreatureTemplate()->flags_extra);
-#else
-        Eluna::Push(L, creature->GetCreatureInfo()->ExtraFlags);
-#endif
-        return 1;
-    }
-
-#if defined(CLASSIC) || defined(TBC) || defined(WOTLK)
-    /**
-     * Returns the [Creature]'s shield block value.
-     *
-     * @return uint32 shieldBlockValue
-     */
-    int GetShieldBlockValue(lua_State* L, Creature* creature)
-    {
-        Eluna::Push(L, creature->GetShieldBlockValue());
-        return 1;
-    }
-#endif
-
-#if defined(TRINITY) || defined(AZEROTHCORE)
     int GetLootMode(lua_State* L, Creature* creature) // TODO: Implement LootMode features
     {
         Eluna::Push(L, creature->GetLootMode());
         return 1;
     }
-#endif
 
     /**
      * Returns the guid of the [Creature] that is used as the ID in the database
@@ -924,12 +752,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int GetDBTableGUIDLow(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->GetSpawnId());
-#else
-        // on mangos based this is same as lowguid
-        Eluna::Push(L, creature->GetGUIDLow());
-#endif
         return 1;
     }
 
@@ -942,7 +765,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         uint32 flags = Eluna::CHECKVAL<uint32>(L, 2);
 
-        creature->SetUInt32Value(UNIT_NPC_FLAGS, flags);
+        creature->AddNpcFlag((NPCFlags)flags);
         return 0;
     }
 
@@ -956,15 +779,10 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         bool disable = Eluna::CHECKVAL<bool>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->SetDisableGravity(disable);
-#else
-        creature->SetLevitate(disable);
-#endif
         return 0;
     }
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
     int SetLootMode(lua_State* L, Creature* creature) // TODO: Implement LootMode features
     {
         uint16 lootMode = Eluna::CHECKVAL<uint16>(L, 2);
@@ -972,7 +790,6 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         creature->SetLootMode(lootMode);
         return 0;
     }
-#endif
 
     /**
      * Sets the [Creature]'s death state to `deathState`.
@@ -983,11 +800,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         int32 state = Eluna::CHECKVAL<int32>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->setDeathState((DeathState)state);
-#else
-        creature->SetDeathState((DeathState)state);
-#endif
         return 0;
     }
 
@@ -1017,15 +830,9 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         uint32 off_hand = Eluna::CHECKVAL<uint32>(L, 3);
         uint32 ranged = Eluna::CHECKVAL<uint32>(L, 4);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 0, main_hand);
-        creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 1, off_hand);
-        creature->SetUInt32Value(UNIT_VIRTUAL_ITEM_SLOT_ID + 2, ranged);
-#else
-        creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_0, main_hand);
-        creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_1, off_hand);
-        creature->SetVirtualItem(VIRTUAL_ITEM_SLOT_2, ranged);
-#endif
+        creature->SetVirtualItem(0, main_hand);
+        creature->SetVirtualItem(1, off_hand);
+        creature->SetVirtualItem(2, ranged);
         return 0;
     }
 
@@ -1038,17 +845,10 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         bool allow = Eluna::CHECKVAL<bool>(L, 2, true);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         if (allow)
-            creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
+            creature->RemoveUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC);
         else
-            creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_IMMUNE_TO_NPC);
-#else
-        if (allow)
-            creature->RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-        else
-            creature->SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PASSIVE);
-#endif
+            creature->AddUnitFlag(UNIT_FLAG_IMMUNE_TO_NPC);
 
         return 0;
     }
@@ -1074,15 +874,8 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int SetInCombatWithZone(lua_State* /*L*/, Creature* creature)
     {
-#if defined(AZEROTHCORE)
         if (creature->IsAIEnabled)
             creature->AI()->DoZoneInCombat();
-#elif defined(TRINITY)
-        if (creature->IsAIEnabled())
-            creature->AI()->DoZoneInCombat();
-#else
-        creature->SetInCombatWithZone();
-#endif
         return 0;
     }
 
@@ -1095,11 +888,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         float dist = Eluna::CHECKVAL<float>(L, 2);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
-        creature->SetWanderDistance(dist);
-#else
         creature->SetRespawnRadius(dist);
-#endif
         return 0;
     }
 
@@ -1164,24 +953,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         bool enable = Eluna::CHECKVAL<bool>(L, 2, true);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->SetHover(enable);
-#else
-        // Copy paste from Aura::HandleAuraHover
-        // TODO: implement core side properly
-        WorldPacket data;
-        if (enable)
-            data.Initialize(SMSG_MOVE_SET_HOVER, 8 + 4);
-        else
-            data.Initialize(SMSG_MOVE_UNSET_HOVER, 8 + 4);
-        data << creature->GetPackGUID();
-        data << uint32(0);
-#if defined(CMANGOS)
-        creature->SendMessageToSet(data, true);
-#else
-        creature->SendMessageToSet(&data, true);
-#endif
-#endif
         return 0;
     }
 
@@ -1194,13 +966,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         uint32 msTimeToDespawn = Eluna::CHECKVAL<uint32>(L, 2, 0);
 
-#if defined(TRINITY)
-        creature->DespawnOrUnsummon(Milliseconds(msTimeToDespawn));
-#elif defined(AZEROTHCORE)
         creature->DespawnOrUnsummon(msTimeToDespawn);
-#else
-        creature->ForcedDespawn(msTimeToDespawn);
-#endif
         return 0;
     }
 
@@ -1227,11 +993,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int MoveWaypoint(lua_State* /*L*/, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->GetMotionMaster()->MovePath(creature->GetWaypointPath(), true);
-#else
-        creature->GetMotionMaster()->MoveWaypoint();
-#endif
         return 0;
     }
 
@@ -1295,11 +1057,7 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
      */
     int SelectVictim(lua_State* L, Creature* creature)
     {
-#if defined(TRINITY) || defined(AZEROTHCORE)
         Eluna::Push(L, creature->SelectVictim());
-#else
-        Eluna::Push(L, creature->SelectHostileTarget());
-#endif
         return 1;
     }
 
@@ -1314,15 +1072,10 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         uint32 entry = Eluna::CHECKVAL<uint32>(L, 2);
         uint32 dataGuidLow = Eluna::CHECKVAL<uint32>(L, 3, 0);
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         creature->UpdateEntry(entry, dataGuidLow ? eObjectMgr->GetCreatureData(dataGuidLow) : NULL);
-#else
-        creature->UpdateEntry(entry, ALLIANCE, dataGuidLow ? eObjectMgr->GetCreatureData(dataGuidLow) : NULL);
-#endif
         return 0;
     }
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
     /**
      * Resets [Creature]'s loot mode to default
      */
@@ -1357,7 +1110,6 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
         creature->AddLootMode(lootMode);
         return 0;
     }
-#endif
 
     /**
      * Returns the [Creature]'s creature family ID (enumerated in CreatureFamily.dbc).
@@ -1417,15 +1169,10 @@ auto const& threatlist = creature->getThreatManager().getThreatList();
     {
         uint32 entry = creature->GetEntry();
 
-#if defined(TRINITY) || defined(AZEROTHCORE)
         CreatureTemplate const* cInfo = sObjectMgr->GetCreatureTemplate(entry);
         if (cInfo)
             Eluna::Push(L, cInfo->family);
-#else
-        CreatureInfo const* cInfo = ObjectMgr::GetCreatureTemplate(entry);
-        if (cInfo)
-            Eluna::Push(L, cInfo->Family);
-#endif
+
         return 1;
     }
 };

@@ -1,5 +1,5 @@
 /*
-* Copyright (C) 2010 - 2016 Eluna Lua Engine <http://emudevs.com/>
+* Copyright (C) 2010 - 2020 Eluna Lua Engine <http://emudevs.com/>
 * This program is free software licensed under GPL version 3
 * Please see the included DOCS/LICENSE.md for more information
 */
@@ -13,36 +13,20 @@
 #include "ElunaUtility.h"
 #include "ElunaCreatureAI.h"
 #include "ElunaInstanceAI.h"
+#include <iostream>
 
-#if defined(TRINITY_PLATFORM) && defined(TRINITY_PLATFORM_WINDOWS)
+#ifdef TRINITY_PLATFORM && defined(TRINITY_PLATFORM_WINDOWS)
 #if TRINITY_PLATFORM == TRINITY_PLATFORM_WINDOWS
-#define ELUNA_WINDOWS
-#endif
-#elif defined(AC_PLATFORM) && defined(AC_PLATFORM_WINDOWS)
-#if AC_PLATFORM == AC_PLATFORM_WINDOWS
-#define ELUNA_WINDOWS
-#endif
-#elif defined(PLATFORM) && defined(PLATFORM_WINDOWS)
-#if PLATFORM == PLATFORM_WINDOWS
 #define ELUNA_WINDOWS
 #endif
 #else
 #error Eluna could not determine platform
 #endif
 
-// Some dummy includes containing BOOST_VERSION:
-// ObjectAccessor.h Config.h Log.h
-#if !defined MANGOS && !defined AZEROTHCORE
 #define USING_BOOST
-#endif
 
-#ifdef USING_BOOST
 #include <boost/filesystem.hpp>
-#else
-#include <ace/ACE.h>
-#include <ace/Dirent.h>
-#include <ace/OS_NS_sys_stat.h>
-#endif
+#include <string>
 
 extern "C"
 {
@@ -70,11 +54,7 @@ void Eluna::Initialize()
     LOCK_ELUNA;
     ASSERT(!IsInitialized());
 
-#if defined TRINITY || AZEROTHCORE
-    // For instance data the data column needs to be able to hold more than 255 characters (tinytext)
-    // so we change it to TEXT automatically on startup
     CharacterDatabase.DirectExecute("ALTER TABLE `instance` CHANGE COLUMN `data` `data` TEXT NOT NULL");
-#endif
 
     LoadScriptPaths();
 
@@ -108,11 +88,6 @@ void Eluna::LoadScriptPaths()
     lua_extensions.clear();
 
     lua_folderpath = eConfigMgr->GetStringDefault("Eluna.ScriptPath", "lua_scripts");
-#ifndef ELUNA_WINDOWS
-    if (lua_folderpath[0] == '~')
-        if (const char* home = getenv("HOME"))
-            lua_folderpath.replace(0, 1, home);
-#endif
     ELUNA_LOG_INFO("[Eluna]: Searching scripts from `%s`", lua_folderpath.c_str());
     lua_requirepath.clear();
     GetScripts(lua_folderpath);
@@ -346,7 +321,6 @@ void Eluna::GetScripts(std::string path)
 {
     ELUNA_LOG_DEBUG("[Eluna]: GetScripts from path `%s`", path.c_str());
 
-#ifdef USING_BOOST
     boost::filesystem::path someDir(path);
     boost::filesystem::directory_iterator end_iter;
 
@@ -363,15 +337,9 @@ void Eluna::GetScripts(std::string path)
             std::string fullpath = dir_iter->path().generic_string();
 
             // Check if file is hidden
-#ifdef ELUNA_WINDOWS
-            DWORD dwAttrib = GetFileAttributes(fullpath.c_str());
-            if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_HIDDEN))
-                continue;
-#else
             std::string name = dir_iter->path().filename().generic_string().c_str();
             if (name[0] == '.')
                 continue;
-#endif
 
             // load subfolder
             if (boost::filesystem::is_directory(dir_iter->status()))
@@ -388,53 +356,6 @@ void Eluna::GetScripts(std::string path)
             }
         }
     }
-#else
-    ACE_Dirent dir;
-    if (dir.open(path.c_str()) == -1) // Error opening directory, return
-        return;
-
-    lua_requirepath +=
-        path + "/?.lua;" +
-        path + "/?.ext;" +
-        path + "/?.dll;" +
-        path + "/?.so;";
-
-    ACE_DIRENT *directory = 0;
-    while ((directory = dir.read()))
-    {
-        // Skip the ".." and "." files.
-        if (ACE::isdotdir(directory->d_name))
-            continue;
-
-        std::string fullpath = path + "/" + directory->d_name;
-
-        // Check if file is hidden
-#ifdef ELUNA_WINDOWS
-        DWORD dwAttrib = GetFileAttributes(fullpath.c_str());
-        if (dwAttrib != INVALID_FILE_ATTRIBUTES && (dwAttrib & FILE_ATTRIBUTE_HIDDEN))
-            continue;
-#else
-        std::string name = directory->d_name;
-        if (name[0] == '.')
-            continue;
-#endif
-
-        ACE_stat stat_buf;
-        if (ACE_OS::lstat(fullpath.c_str(), &stat_buf) == -1)
-            continue;
-
-        // load subfolder
-        if ((stat_buf.st_mode & S_IFMT) == (S_IFDIR))
-        {
-            GetScripts(fullpath);
-            continue;
-        }
-
-        // was file, try add
-        std::string filename = directory->d_name;
-        AddScriptPath(filename, fullpath);
-    }
-#endif
 }
 
 static bool ScriptPathComparator(const LuaScript& first, const LuaScript& second)
@@ -523,11 +444,7 @@ void Eluna::RunScripts()
 void Eluna::InvalidateObjects()
 {
     ++callstackid;
-#ifdef TRINITY
     ASSERT(callstackid, "Callstackid overflow");
-#else
-    ASSERT(callstackid && "Callstackid overflow");
-#endif
 }
 
 void Eluna::Report(lua_State* _L)
@@ -672,6 +589,33 @@ void Eluna::Push(lua_State* luastate, const char* str)
 {
     lua_pushstring(luastate, str);
 }
+/**
+ * type :
+ *  - Global
+ *  - MapSpecific
+ */
+void Eluna::Push(lua_State* luastate, ObjectGuid const guid, int type /*= 1*/)
+{
+    char errorBuffer[64];
+
+    uint64 objectGuid = uint64(type) << 4;
+    objectGuid = guid.GetCounter() << 8;
+    objectGuid = uint64(guid.GetHigh()) << 12;
+    switch (type)
+    {
+        case 1: //< Global
+            Push(luastate, objectGuid);
+            break;
+        case 2: //< MapSpecific
+            objectGuid = uint64(guid.GetMapId() << 16);
+            objectGuid = uint64(guid.GetEntry() << 20);
+            Push(luastate, objectGuid);
+            break;
+        default:
+            snprintf(errorBuffer, 64, "incorrect typeId");
+            break;
+    }
+}
 void Eluna::Push(lua_State* luastate, Pet const* pet)
 {
     Push<Creature>(luastate, pet);
@@ -748,10 +692,6 @@ void Eluna::Push(lua_State* luastate, Object const* obj)
         default:
             ElunaTemplate<Object>::Push(luastate, obj);
     }
-}
-void Eluna::Push(lua_State* luastate, ObjectGuid const guid)
-{
-    ElunaTemplate<unsigned long long>::Push(luastate, new unsigned long long(guid.GetRawValue()));
 }
 
 static int CheckIntegerRange(lua_State* luastate, int narg, int min, int max)
@@ -857,7 +797,40 @@ template<> unsigned long Eluna::CHECKVAL<unsigned long>(lua_State* luastate, int
 }
 template<> ObjectGuid Eluna::CHECKVAL<ObjectGuid>(lua_State* luastate, int narg)
 {
-    return ObjectGuid(uint64((CHECKVAL<unsigned long long>(luastate, narg))));
+    uint64 guid = CHECKVAL<uint64>(luastate, narg);
+
+    uint32 type = guid >> 4;
+    HighGuid high = HighGuid(guid >> 8);
+    uint64 low = guid >> 12;
+
+    if (type == 1) // Global & RealmSpecific
+    {
+        switch (high)
+        {
+            case HIGHGUID_PLAYER:
+                return ObjectGuid::Create<HIGHGUID_PLAYER>(low);
+            case HIGHGUID_ITEM:
+                return ObjectGuid::Create<HIGHGUID_ITEM>(low);
+            default:
+                return ObjectGuid::Empty;
+        }
+    }
+    else if (type == 2)
+    {
+        uint16 mapId = uint16(guid >> 16);
+        uint32 entry = uint32(guid >> 20);
+        switch (high)
+        {
+            case HIGHGUID_GAMEOBJECT:
+                return ObjectGuid::Create<HIGHGUID_GAMEOBJECT>(mapId, entry, low);
+            case HIGHGUID_UNIT:
+                return ObjectGuid::Create<HIGHGUID_UNIT>(mapId, entry, low);
+            default:
+                return ObjectGuid::Empty;
+        }
+    }
+
+    return ObjectGuid::Empty;
 }
 
 template<> Object* Eluna::CHECKOBJ<Object>(lua_State* luastate, int narg, bool error)
@@ -1013,7 +986,7 @@ int Eluna::Register(lua_State* L, uint8 regtype, uint32 entry, ObjectGuid guid, 
         case Hooks::REGTYPE_PACKET:
             if (event_id < Hooks::PACKET_EVENT_COUNT)
             {
-                if (entry >= NUM_MSG_TYPES)
+                if (entry >= OpcodeMisc::MAX_OPCODE)
                 {
                     luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
                     luaL_error(L, "Couldn't find a creature with (ID: %d)!", entry);
@@ -1045,7 +1018,7 @@ int Eluna::Register(lua_State* L, uint8 regtype, uint32 entry, ObjectGuid guid, 
                 }
                 else
                 {
-                    if (guid.IsEmpty())
+                    if (guid == ObjectGuid::Empty)
                     {
                         luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
                         luaL_error(L, "guid was 0!");
@@ -1080,16 +1053,19 @@ int Eluna::Register(lua_State* L, uint8 regtype, uint32 entry, ObjectGuid guid, 
         case Hooks::REGTYPE_GAMEOBJECT:
             if (event_id < Hooks::GAMEOBJECT_EVENT_COUNT)
             {
-                if (!eObjectMgr->GetGameObjectTemplate(entry))
+                if (entry != 0)
                 {
-                    luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
-                    luaL_error(L, "Couldn't find a gameobject with (ID: %d)!", entry);
-                    return 0; // Stack: (empty)
-                }
+                    if (!eObjectMgr->GetGameObjectTemplate(entry))
+                    {
+                        luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
+                        luaL_error(L, "Couldn't find a gameobject with (ID: %d)!", entry);
+                        return 0; // Stack: (empty)
+                    }
 
-                auto key = EntryKey<Hooks::GameObjectEvents>((Hooks::GameObjectEvents)event_id, entry);
-                bindingID = GameObjectEventBindings->Insert(key, functionRef, shots);
-                createCancelCallback(L, bindingID, GameObjectEventBindings);
+                    auto key = EntryKey<Hooks::GameObjectEvents>((Hooks::GameObjectEvents)event_id, entry);
+                    bindingID = GameObjectEventBindings->Insert(key, functionRef, shots);
+                    createCancelCallback(L, bindingID, GameObjectEventBindings);
+                }
                 return 1; // Stack: callback
             }
             break;
@@ -1175,7 +1151,7 @@ int Eluna::Register(lua_State* L, uint8 regtype, uint32 entry, ObjectGuid guid, 
     }
     luaL_unref(L, LUA_REGISTRYINDEX, functionRef);
     std::ostringstream oss;
-    oss << "regtype " << static_cast<uint32>(regtype) << ", event " << event_id << ", entry " << entry << ", guid " << guid.GetRawValue() << ", instance " << instanceId;
+    oss << "regtype " << static_cast<uint32>(regtype) << ", event " << event_id << ", entry " << entry << ", instance " << instanceId;
     luaL_error(L, "Unknown event type (%s)", oss.str().c_str());
     return 0;
 }
