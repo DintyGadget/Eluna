@@ -618,7 +618,7 @@ namespace LuaCreature
         float dist = Eluna::CHECKVAL<float>(L, 5, 0.0f);
         int32 aura = Eluna::CHECKVAL<int32>(L, 6, 0);
 
-        auto const& threatlist = creature->GetThreatManager().getThreatList();
+        auto const& threatlist = creature->GetThreatManager().GetThreatenedByMeList();
 
         if (threatlist.empty())
             return 1;
@@ -628,7 +628,7 @@ namespace LuaCreature
         std::list<Unit*> targetList;
         for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
         {
-            Unit* target = (*itr)->getTarget();
+            Unit* target = itr->second->GetOwner();
             if (!target)
                 continue;
             if (playerOnly && target->GetTypeId() != TYPEID_PLAYER)
@@ -697,13 +697,13 @@ namespace LuaCreature
      */
     int GetAITargets(lua_State* L, Creature* creature)
     {
-        auto const& threatlist = creature->GetThreatManager().getThreatList();
+        auto const& threatlist = creature->GetThreatManager().GetThreatenedByMeList();
         lua_createtable(L, threatlist.size(), 0);
         int tbl = lua_gettop(L);
         uint32 i = 0;
         for (auto itr = threatlist.begin(); itr != threatlist.end(); ++itr)
         {
-            Unit* target = (*itr)->getTarget();
+            Unit* target = itr->second->GetOwner();
             if (!target)
                 continue;
             Eluna::Push(L, target);
@@ -721,7 +721,7 @@ namespace LuaCreature
      */
     int GetAITargetsCount(lua_State* L, Creature* creature)
     {
-        Eluna::Push(L, creature->GetThreatManager().getThreatList().size());
+        Eluna::Push(L, creature->GetThreatManager().GetThreatenedByMeList().size());
         return 1;
     }
 
